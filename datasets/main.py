@@ -15,6 +15,11 @@ import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import tensorflow as tf
+from keras.preprocessing.image import ImageDataGenerator
+import os
+
+import imghdr
 
 seed = 1723
 
@@ -259,7 +264,66 @@ def _2():
 
 def _3():
     # Convolutional Neural Network (CNN)
-    print("Working on this")
+    test_dir = os.path.join('datasets', 'data', 'images', 'non-volcanoes')
+    train_dir = os.path.join('datasets', 'data', 'images', 'volcanoes')
+            
+    batch_size = 32
+    img_size = (1024, 1024)
+
+    train_datagen = ImageDataGenerator(
+        rescale=1./255,      # rescale pixel values between 0 and 1
+        shear_range=0.2,     # apply random shear transformation
+        zoom_range=0.2,      # apply random zoom transformation
+        horizontal_flip=True  # flip images horizontally
+    )
+
+    test_datagen = ImageDataGenerator(
+        rescale=1./255       # rescale pixel values between 0 and 1
+    )
+
+    train_generator = train_datagen.flow_from_directory(
+        train_dir,        # path to the training directory
+        target_size=img_size,  # resize the images to (256, 256)
+        batch_size=batch_size,
+        class_mode='binary'   # binary classification
+    )
+
+    test_generator = test_datagen.flow_from_directory(
+        test_dir,          # path to the testing directory
+        target_size=img_size,
+        batch_size=batch_size,
+        class_mode='binary'
+    )
+
+    print("Number of images in training directory:", train_generator.samples)
+    print("Number of images in validation directory:", test_generator.samples)
+
+    model = tf.keras.Sequential([
+        tf.keras.layers.Conv2D(
+            32, (3, 3), activation='relu', input_shape=(256, 256, 3)),
+        tf.keras.layers.MaxPooling2D(2, 2),
+        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(2, 2),
+        tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(2, 2),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(1, activation='sigmoid')
+    ])
+
+    model.compile(loss='binary_crossentropy',
+                  optimizer='adam', metrics=['accuracy'])
+
+    epochs = 10
+    history = model.fit(
+        train_generator,
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        validation_data=test_generator,
+        validation_steps=len(test_generator)
+    )
+
+    model.evaluate(test_generator)
 
 
 if __name__ == "__main__":
